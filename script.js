@@ -1,5 +1,6 @@
 // Firebaseから必要な機能を読み込む
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
 import {
   getFirestore,
   collection,
@@ -10,6 +11,14 @@ import {
   onSnapshot,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // Firebaseの設定
 const firebaseConfig = {
@@ -24,14 +33,15 @@ const firebaseConfig = {
 // Firebaseを開始
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
-// Firestoreの保存場所
-const memosCollection = collection(db, "memos");
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
 let memos = [];
 let selectedCategory = "全部";
 let selectedMemoId = null;
 let editingMemoId = null;
+let currentUser = null;
+let unsubscribeMemos = null;
 
 const memoList = document.getElementById("memoList");
 const memoTitle = document.getElementById("memoTitle");
@@ -49,6 +59,10 @@ const deleteMemoButton = document.getElementById("deleteMemoButton");
 const openFormButton = document.getElementById("openFormButton");
 const newMemoForm = document.querySelector(".new-memo-form");
 
+const loginButton = document.getElementById("loginButton");
+const logoutButton = document.getElementById("logoutButton");
+const userName = document.getElementById("userName");
+
 function getTime(value) {
   if (!value) {
     return 0;
@@ -61,12 +75,28 @@ function getTime(value) {
   return new Date(value).getTime();
 }
 
+// ログイン中のユーザー専用のメモ保存場所
+function getMemosCollection() {
+  return collection(db, "users", currentUser.uid, "memos");
+}
+
 function openForm() {
+  if (!currentUser) {
+    alert("先にGoogleでログインしてください");
+    return;
+  }
+
   newMemoForm.classList.remove("hidden");
 }
 
 function closeForm() {
   newMemoForm.classList.add("hidden");
+}
+
+function showLoginMessage() {
+  memoList.innerHTML = "";
+  memoTitle.textContent = "ログインしてください";
+  memoBody.textContent = "Googleでログインすると、PCとスマホで同じメモを使えます。";
 }
 
 function showMemo(memoId) {
@@ -94,6 +124,30 @@ function updateCategoryButton() {
   });
 }
 
+function updateAuthUI() {
+  if (currentUser) {
+    userName.textContent = currentUser.displayName || currentUser.email || "ログイン中";
+
+    loginButton.classList.add("hidden");
+    logoutButton.classList.remove("hidden");
+
+    openFormButton.disabled = false;
+    editMemoButton.disabled = false;
+    deleteMemoButton.disabled = false;
+    addMemoButton.disabled = false;
+  } else {
+    userName.textContent = "未ログイン";
+
+    loginButton.classList.remove("hidden");
+    logoutButton.classList.add("hidden");
+
+    openFormButton.disabled = true;
+    editMemoButton.disabled = true;
+    deleteMemoButton.disabled = true;
+    addMemoButton.disabled = true;
+  }
+}
+
 function isMemoVisible(memo) {
   if (selectedCategory === "全部") {
     return true;
@@ -103,6 +157,11 @@ function isMemoVisible(memo) {
 }
 
 function renderMemoList() {
+  if (!currentUser) {
+    showLoginMessage();
+    return;
+  }
+
   memoList.innerHTML = "";
 
   const filteredMemos = memos.filter((memo) => {
@@ -145,6 +204,11 @@ function renderMemoList() {
 }
 
 function startEditMemo() {
+  if (!currentUser) {
+    alert("先にGoogleでログインしてください");
+    return;
+  }
+
   if (selectedMemoId === null) {
     alert("編集するメモがありません");
     return;
@@ -182,6 +246,11 @@ function cancelEdit() {
 }
 
 async function addOrUpdateMemo() {
+  if (!currentUser) {
+    alert("先にGoogleでログインしてください");
+    return;
+  }
+
   const title = titleInput.value.trim();
   const category = categoryInput.value;
   const body = bodyInput.value;
@@ -192,7 +261,7 @@ async function addOrUpdateMemo() {
   }
 
   if (editingMemoId !== null) {
-    const memoRef = doc(db, "memos", editingMemoId);
+    const memoRef = doc(db, "users", currentUser.uid, "memos", editingMemoId);
 
     await updateDoc(memoRef, {
       title: title,
@@ -205,7 +274,7 @@ async function addOrUpdateMemo() {
     editingMemoId = null;
     addMemoButton.textContent = "追加";
   } else {
-    const docRef = await addDoc(memosCollection, {
+    const docRef = await addDoc(getMemosCollection(), {
       title: title,
       category: category,
       body: body,
@@ -225,6 +294,11 @@ async function addOrUpdateMemo() {
 }
 
 async function deleteSelectedMemo() {
+  if (!currentUser) {
+    alert("先にGoogleでログインしてください");
+    return;
+  }
+
   if (selectedMemoId === null) {
     alert("削除するメモがありません");
     return;
@@ -243,7 +317,7 @@ async function deleteSelectedMemo() {
     return;
   }
 
-  await deleteDoc(doc(db, "memos", selectedMemoId));
+  await deleteDoc(doc(db, "users", currentUser.uid, "memos", selectedMemoId));
 
   selectedMemoId = null;
   editingMemoId = null;
@@ -255,6 +329,36 @@ async function deleteSelectedMemo() {
   closeForm();
 }
 
+function startMemoListener() {
+  if (unsubscribeMemos) {
+    unsubscribeMemos();
+    unsubscribeMemos = null;
+  }
+
+  unsubscribeMemos = onSnapshot(
+    getMemosCollection(),
+    (snapshot) => {
+      memos = snapshot.docs.map((document) => {
+        return {
+          id: document.id,
+          ...document.data()
+        };
+      });
+
+      memos.sort((a, b) => {
+        return getTime(b.updatedAt) - getTime(a.updatedAt);
+      });
+
+      renderMemoList();
+    },
+    (error) => {
+      console.error(error);
+      memoTitle.textContent = "読み込みエラー";
+      memoBody.textContent = "Firestoreからメモを読み込めませんでした。ルールやログイン状態を確認してください。";
+    }
+  );
+}
+
 categoryButtons.forEach((button) => {
   button.addEventListener("click", () => {
     selectedCategory = button.dataset.category;
@@ -262,6 +366,19 @@ categoryButtons.forEach((button) => {
     updateCategoryButton();
     renderMemoList();
   });
+});
+
+loginButton.addEventListener("click", async () => {
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (error) {
+    console.error(error);
+    alert("Googleログインに失敗しました。Firebase Authenticationの設定を確認してください。");
+  }
+});
+
+logoutButton.addEventListener("click", async () => {
+  await signOut(auth);
 });
 
 openFormButton.addEventListener("click", () => {
@@ -279,7 +396,7 @@ addMemoButton.addEventListener("click", async () => {
     await addOrUpdateMemo();
   } catch (error) {
     console.error(error);
-    alert("メモの保存に失敗しました。Firestoreの設定やルールを確認してください。");
+    alert("メモの保存に失敗しました。Firestoreのルールを確認してください。");
   }
 });
 
@@ -296,32 +413,36 @@ deleteMemoButton.addEventListener("click", async () => {
     await deleteSelectedMemo();
   } catch (error) {
     console.error(error);
-    alert("メモの削除に失敗しました。Firestoreの設定やルールを確認してください。");
+    alert("メモの削除に失敗しました。Firestoreのルールを確認してください。");
   }
 });
 
-// Firestoreのメモをリアルタイムで読み込む
-onSnapshot(
-  memosCollection,
-  (snapshot) => {
-    memos = snapshot.docs.map((document) => {
-      return {
-        id: document.id,
-        ...document.data()
-      };
-    });
+onAuthStateChanged(auth, (user) => {
+  currentUser = user;
 
-    memos.sort((a, b) => {
-      return getTime(b.updatedAt) - getTime(a.updatedAt);
-    });
-
-    renderMemoList();
-  },
-  (error) => {
-    console.error(error);
-    memoTitle.textContent = "読み込みエラー";
-    memoBody.textContent = "Firestoreからメモを読み込めませんでした。ルールやデータベース設定を確認してください。";
+  if (unsubscribeMemos) {
+    unsubscribeMemos();
+    unsubscribeMemos = null;
   }
-);
+
+  memos = [];
+  selectedMemoId = null;
+  editingMemoId = null;
+
+  titleInput.value = "";
+  bodyInput.value = "";
+  addMemoButton.textContent = "追加";
+  closeForm();
+
+  updateAuthUI();
+
+  if (currentUser) {
+    startMemoListener();
+  } else {
+    showLoginMessage();
+  }
+});
 
 updateCategoryButton();
+updateAuthUI();
+showLoginMessage();
