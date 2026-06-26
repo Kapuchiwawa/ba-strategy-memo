@@ -116,3 +116,17 @@ button {
 .hidden {
   display: none;
 }
+
+.auth-area {
+  margin-top: 12px;
+}
+
+#userName {
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
