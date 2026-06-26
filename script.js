@@ -1,41 +1,37 @@
-const STORAGE_KEY = "baStrategyMemos";
+// Firebaseから必要な機能を読み込む
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const defaultMemos = [
-  {
-    title: "ビナー Insane",
-    category: "総力戦",
-    body: `ここにビナーの攻略メモを書く。
+// Firebaseの設定
+const firebaseConfig = {
+  apiKey: "AIzaSyAnYQfgnTjdOp8uknYemon2BwCdaC8LB6o",
+  authDomain: "ba-strategy-memo-jp.firebaseapp.com",
+  projectId: "ba-strategy-memo-jp",
+  storageBucket: "ba-strategy-memo-jp.firebasestorage.app",
+  messagingSenderId: "329667143154",
+  appId: "1:329667143154:web:c674488e1866a4e651f76b"
+};
 
-例：
-8 ツバキ
-10 ホシノ
-すぐバフ`
-  },
-  {
-    title: "セト 神秘",
-    category: "制約解除",
-    body: `ここにセトの攻略メモを書く。
+// Firebaseを開始
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-例：
-03:56 マリー
-03:10 ケイ死亡待機
-02:55 赤玉前にケイ`
-  },
-  {
-    title: "山海経 夏イベChallenge",
-    category: "イベント",
-    body: `ここにイベントChallengeのメモを書く。
+// Firestoreの保存場所
+const memosCollection = collection(db, "memos");
 
-例：
-ユウカ セリカ マリー ハナコ
-キサキ→ヒナ`
-  }
-];
-
-let memos = loadMemos();
+let memos = [];
 let selectedCategory = "全部";
-let selectedMemoIndex = 0;
-let editingMemoIndex = null;
+let selectedMemoId = null;
+let editingMemoId = null;
 
 const memoList = document.getElementById("memoList");
 const memoTitle = document.getElementById("memoTitle");
@@ -46,32 +42,44 @@ const titleInput = document.getElementById("titleInput");
 const categoryInput = document.getElementById("categoryInput");
 const bodyInput = document.getElementById("bodyInput");
 const addMemoButton = document.getElementById("addMemoButton");
-
-const openFormButton = document.getElementById("openFormButton");
-const newMemoForm = document.querySelector(".new-memo-form");
-
 const editMemoButton = document.getElementById("editMemoButton");
 const cancelEditButton = document.getElementById("cancelEditButton");
 const deleteMemoButton = document.getElementById("deleteMemoButton");
 
-function loadMemos() {
-  const savedMemos = localStorage.getItem(STORAGE_KEY);
+const openFormButton = document.getElementById("openFormButton");
+const newMemoForm = document.querySelector(".new-memo-form");
 
-  if (savedMemos === null) {
-    return defaultMemos;
+function getTime(value) {
+  if (!value) {
+    return 0;
   }
 
-  return JSON.parse(savedMemos);
+  if (typeof value.toMillis === "function") {
+    return value.toMillis();
+  }
+
+  return new Date(value).getTime();
 }
 
-function saveMemos() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(memos));
+function openForm() {
+  newMemoForm.classList.remove("hidden");
 }
 
-function showMemo(index) {
-  const memo = memos[index];
+function closeForm() {
+  newMemoForm.classList.add("hidden");
+}
 
-  selectedMemoIndex = index;
+function showMemo(memoId) {
+  const memo = memos.find((memo) => memo.id === memoId);
+
+  if (!memo) {
+    selectedMemoId = null;
+    memoTitle.textContent = "メモがありません";
+    memoBody.textContent = "このカテゴリには、まだメモがありません。";
+    return;
+  }
+
+  selectedMemoId = memo.id;
   memoTitle.textContent = memo.title;
   memoBody.textContent = memo.body;
 }
@@ -97,46 +105,59 @@ function isMemoVisible(memo) {
 function renderMemoList() {
   memoList.innerHTML = "";
 
-  let firstVisibleIndex = null;
+  const filteredMemos = memos.filter((memo) => {
+    return isMemoVisible(memo);
+  });
 
-  memos.forEach((memo, index) => {
-    if (!isMemoVisible(memo)) {
-      return;
-    }
+  if (filteredMemos.length === 0) {
+    selectedMemoId = null;
+    memoTitle.textContent = "メモがありません";
+    memoBody.textContent = "このカテゴリには、まだメモがありません。";
+    return;
+  }
 
-    if (firstVisibleIndex === null) {
-      firstVisibleIndex = index;
-    }
+  const selectedMemoIsVisible = filteredMemos.some((memo) => {
+    return memo.id === selectedMemoId;
+  });
 
+  if (!selectedMemoIsVisible) {
+    selectedMemoId = filteredMemos[0].id;
+  }
+
+  filteredMemos.forEach((memo) => {
     const li = document.createElement("li");
 
     li.className = "memo-item";
     li.textContent = memo.title;
 
-    if (index === editingMemoIndex) {
+    if (memo.id === editingMemoId) {
       li.classList.add("editing");
     }
 
     li.addEventListener("click", () => {
-      showMemo(index);
+      showMemo(memo.id);
     });
 
     memoList.appendChild(li);
   });
 
-    if (firstVisibleIndex !== null) {
-    showMemo(firstVisibleIndex);
-  } else {
-    selectedMemoIndex = null;
-    memoTitle.textContent = "メモがありません";
-    memoBody.textContent = "このカテゴリには、まだメモがありません。";
-  }
+  showMemo(selectedMemoId);
 }
 
 function startEditMemo() {
-  const memo = memos[selectedMemoIndex];
+  if (selectedMemoId === null) {
+    alert("編集するメモがありません");
+    return;
+  }
 
-  editingMemoIndex = selectedMemoIndex;
+  const memo = memos.find((memo) => memo.id === selectedMemoId);
+
+  if (!memo) {
+    alert("メモが見つかりません");
+    return;
+  }
+
+  editingMemoId = memo.id;
 
   titleInput.value = memo.title;
   categoryInput.value = memo.category;
@@ -149,7 +170,7 @@ function startEditMemo() {
 }
 
 function cancelEdit() {
-  editingMemoIndex = null;
+  editingMemoId = null;
 
   titleInput.value = "";
   bodyInput.value = "";
@@ -160,21 +181,61 @@ function cancelEdit() {
   renderMemoList();
 }
 
-function openForm() {
-  newMemoForm.classList.remove("hidden");
+async function addOrUpdateMemo() {
+  const title = titleInput.value.trim();
+  const category = categoryInput.value;
+  const body = bodyInput.value;
+
+  if (title === "") {
+    alert("タイトルを入力してください");
+    return;
+  }
+
+  if (editingMemoId !== null) {
+    const memoRef = doc(db, "memos", editingMemoId);
+
+    await updateDoc(memoRef, {
+      title: title,
+      category: category,
+      body: body,
+      updatedAt: serverTimestamp()
+    });
+
+    selectedMemoId = editingMemoId;
+    editingMemoId = null;
+    addMemoButton.textContent = "追加";
+  } else {
+    const docRef = await addDoc(memosCollection, {
+      title: title,
+      category: category,
+      body: body,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    selectedMemoId = docRef.id;
+  }
+
+  titleInput.value = "";
+  bodyInput.value = "";
+
+  selectedCategory = category;
+  updateCategoryButton();
+  closeForm();
 }
 
-function closeForm() {
-  newMemoForm.classList.add("hidden");
-}
-
-function deleteSelectedMemo() {
-  if (selectedMemoIndex === null) {
+async function deleteSelectedMemo() {
+  if (selectedMemoId === null) {
     alert("削除するメモがありません");
     return;
   }
 
-  const memo = memos[selectedMemoIndex];
+  const memo = memos.find((memo) => memo.id === selectedMemoId);
+
+  if (!memo) {
+    alert("メモが見つかりません");
+    return;
+  }
 
   const result = confirm(`「${memo.title}」を削除しますか？`);
 
@@ -182,19 +243,16 @@ function deleteSelectedMemo() {
     return;
   }
 
-  memos.splice(selectedMemoIndex, 1);
-  saveMemos();
+  await deleteDoc(doc(db, "memos", selectedMemoId));
 
-  editingMemoIndex = null;
+  selectedMemoId = null;
+  editingMemoId = null;
+
   titleInput.value = "";
   bodyInput.value = "";
   addMemoButton.textContent = "追加";
 
-  if (selectedMemoIndex >= memos.length) {
-    selectedMemoIndex = memos.length - 1;
-  }
-
-  renderMemoList();
+  closeForm();
 }
 
 categoryButtons.forEach((button) => {
@@ -206,47 +264,23 @@ categoryButtons.forEach((button) => {
   });
 });
 
-addMemoButton.addEventListener("click", () => {
-  const title = titleInput.value.trim();
-  const category = categoryInput.value;
-  const body = bodyInput.value;
-
-  if (title === "") {
-    alert("タイトルを入力してください");
-    return;
-  }
-
-  if (editingMemoIndex !== null) {
-    memos[editingMemoIndex] = {
-      title: title,
-      category: category,
-      body: body
-    };
-
-    selectedMemoIndex = editingMemoIndex;
-    editingMemoIndex = null;
-    addMemoButton.textContent = "追加";
-  } else {
-    const newMemo = {
-      title: title,
-      category: category,
-      body: body
-    };
-
-    memos.push(newMemo);
-    selectedMemoIndex = memos.length - 1;
-  }
-
-  saveMemos();
+openFormButton.addEventListener("click", () => {
+  editingMemoId = null;
 
   titleInput.value = "";
   bodyInput.value = "";
+  addMemoButton.textContent = "追加";
 
-  selectedCategory = category;
-  updateCategoryButton();
-  renderMemoList();
-  showMemo(selectedMemoIndex);
-  closeForm();
+  openForm();
+});
+
+addMemoButton.addEventListener("click", async () => {
+  try {
+    await addOrUpdateMemo();
+  } catch (error) {
+    console.error(error);
+    alert("メモの保存に失敗しました。Firestoreの設定やルールを確認してください。");
+  }
 });
 
 editMemoButton.addEventListener("click", () => {
@@ -257,19 +291,37 @@ cancelEditButton.addEventListener("click", () => {
   cancelEdit();
 });
 
-deleteMemoButton.addEventListener("click", () => {
-  deleteSelectedMemo();
+deleteMemoButton.addEventListener("click", async () => {
+  try {
+    await deleteSelectedMemo();
+  } catch (error) {
+    console.error(error);
+    alert("メモの削除に失敗しました。Firestoreの設定やルールを確認してください。");
+  }
 });
 
-openFormButton.addEventListener("click", () => {
-  editingMemoIndex = null;
+// Firestoreのメモをリアルタイムで読み込む
+onSnapshot(
+  memosCollection,
+  (snapshot) => {
+    memos = snapshot.docs.map((document) => {
+      return {
+        id: document.id,
+        ...document.data()
+      };
+    });
 
-  titleInput.value = "";
-  bodyInput.value = "";
-  addMemoButton.textContent = "追加";
+    memos.sort((a, b) => {
+      return getTime(b.updatedAt) - getTime(a.updatedAt);
+    });
 
-  openForm();
-});
+    renderMemoList();
+  },
+  (error) => {
+    console.error(error);
+    memoTitle.textContent = "読み込みエラー";
+    memoBody.textContent = "Firestoreからメモを読み込めませんでした。ルールやデータベース設定を確認してください。";
+  }
+);
 
 updateCategoryButton();
-renderMemoList();
