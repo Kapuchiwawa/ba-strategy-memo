@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="Shift_JIS">
+    <title>BA Strategy Memo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header>
+        <h1>BA Strategy Memo</h1>
+        <p>ブルアカ攻略メモをカテゴリごとに保存するアプリ</p>
+
+        <button class="category-button active" data-category="全部">全部</button>
+        <button class="category-button" data-category="総力戦">総力戦</button>
+        <button class="category-button" data-category="大決戦">大決戦</button>
+        <button class="category-button" data-category="制約解除">制約解除</button>
+        <button class="category-button" data-category="イベント">イベント</button>
+    </header>
+
+    <div class="form-open-area">
+        <button id="openFormButton" type="button">＋ 新規メモ</button>
+    </div>
+
+    <section class="new-memo-form hidden">
+        <h2>新規メモ</h2>
+
+        <input id="titleInput" type="text" placeholder="タイトル 例：ホバクラ Insane 重装甲">
+
+        <select id="categoryInput">
+            <option value="総力戦">総力戦</option>
+            <option value="大決戦">大決戦</option>
+            <option value="制約解除">制約解除</option>
+            <option value="イベント">イベント</option>
+        </select>
+
+        <textarea id="bodyInput" placeholder="ここに本文を書く"></textarea>
+
+        <button id="addMemoButton" type="button">追加</button>
+        <button id="cancelEditButton" type="button">編集をやめる</button>
+    </section>
+
+    <main>
+        <section class="memo-list">
+            <h2>メモ一覧</h2>
+
+            <ul id="memoList"></ul>
+        </section>
+
+        <section class="memo-detail">
+            <h2 id="memoTitle">メモ本文</h2>
+
+            <p id="memoBody">
+                ここに選んだメモの内容を表示します。
+            </p>
+
+            <button id="editMemoButton" type="button">このメモを編集</button>
+            <button id="deleteMemoButton" type="button">このメモを削除</button>
+        </section>
+    </main>
+    <script src="script.js"></script>
+</body>
+
+</html>

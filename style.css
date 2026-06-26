@@ -1,0 +1,118 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background-color: #eaf5ff;
+  color: #233246;
+}
+
+header {
+  background-color: white;
+  padding: 20px;
+  border-bottom: 1px solid #c9dcec;
+}
+
+h1 {
+  margin: 0;
+}
+
+main {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+}
+
+.memo-list {
+  width: 300px;
+  background-color: white;
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.memo-detail {
+  flex: 1;
+  background-color: white;
+  padding: 16px;
+  border-radius: 12px;
+}
+
+button {
+  padding: 8px 14px;
+  margin-right: 8px;
+  border: none;
+  border-radius: 8px;
+  background-color: #2f80d8;
+  color: white;
+  font-weight: bold;
+}
+
+.memo-item {
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background-color: #f1f8ff;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.memo-item:hover {
+  background-color: #dceeff;
+}
+
+#memoBody {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.category-button.active {
+  background-color: #ffe84a;
+  color: #233246;
+}
+
+.new-memo-form {
+  margin: 20px;
+  padding: 16px;
+  background-color: white;
+  border-radius: 12px;
+}
+
+.new-memo-form input,
+.new-memo-form select,
+.new-memo-form textarea {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid #c9dcec;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.new-memo-form textarea {
+  height: 120px;
+  resize: vertical;
+}
+
+#editMemoButton {
+  margin-top: 16px;
+}
+
+#cancelEditButton {
+  background-color: #8a9bb0;
+}
+
+.editing {
+  outline: 3px solid #ffe84a;
+}
+
+#deleteMemoButton {
+  margin-top: 10px;
+  background-color: #d9534f;
+}
+
+.form-open-area {
+  margin: 20px;
+}
+
+.hidden {
+  display: none;
+}
