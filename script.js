@@ -43,6 +43,9 @@ let editingMemoId = null;
 let currentUser = null;
 let unsubscribeMemos = null;
 
+let notesCache = [];
+let currentSort = localStorage.getItem("memoSort") || "manual";
+
 const memoList = document.getElementById("memoList");
 const memoTitle = document.getElementById("memoTitle");
 const memoBody = document.getElementById("memoBody");
@@ -278,6 +281,7 @@ async function addOrUpdateMemo() {
       title: title,
       category: category,
       body: body,
+      sortOrder: Date.now(),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
@@ -446,3 +450,49 @@ onAuthStateChanged(auth, (user) => {
 updateCategoryButton();
 updateAuthUI();
 showLoginMessage();
+
+function getTimeValue(value) {
+  if (!value) return 0;
+
+  if (typeof value.toMillis === "function") {
+    return value.toMillis();
+  }
+
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  if (typeof value === "number") {
+    return value;
+  }
+
+  return new Date(value).getTime() || 0;
+}
+
+function sortNotes(notes) {
+  const sorted = [...notes];
+
+  sorted.sort((a, b) => {
+    if (currentSort === "manual") {
+      const orderA = a.sortOrder ?? getTimeValue(a.createdAt);
+      const orderB = b.sortOrder ?? getTimeValue(b.createdAt);
+      return orderA - orderB;
+    }
+
+    if (currentSort === "updatedDesc") {
+      return getTimeValue(b.updatedAt) - getTimeValue(a.updatedAt);
+    }
+
+    if (currentSort === "createdDesc") {
+      return getTimeValue(b.createdAt) - getTimeValue(a.createdAt);
+    }
+
+    if (currentSort === "titleAsc") {
+      return (a.title || "").localeCompare(b.title || "", "ja");
+    }
+
+    return 0;
+  });
+
+  return sorted;
+}
