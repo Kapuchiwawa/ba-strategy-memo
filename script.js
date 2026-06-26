@@ -66,6 +66,10 @@ const loginButton = document.getElementById("loginButton");
 const logoutButton = document.getElementById("logoutButton");
 const userName = document.getElementById("userName");
 
+const sortSelect = document.getElementById("sortSelect");
+
+sortSelect.value = currentSort;
+
 function getTime(value) {
   if (!value) {
     return 0;
@@ -171,22 +175,24 @@ function renderMemoList() {
     return isMemoVisible(memo);
   });
 
-  if (filteredMemos.length === 0) {
+  const sortedMemos = sortNotes(filteredMemos);
+
+  if (sortedMemos.length === 0) {
     selectedMemoId = null;
     memoTitle.textContent = "メモがありません";
     memoBody.textContent = "このカテゴリには、まだメモがありません。";
     return;
   }
 
-  const selectedMemoIsVisible = filteredMemos.some((memo) => {
+  const selectedMemoIsVisible = sortedMemos.some((memo) => {
     return memo.id === selectedMemoId;
   });
 
   if (!selectedMemoIsVisible) {
-    selectedMemoId = filteredMemos[0].id;
+    selectedMemoId = sortedMemos[0].id;
   }
 
-  filteredMemos.forEach((memo) => {
+  sortedMemos.forEach((memo) => {
     const li = document.createElement("li");
 
     li.className = "memo-item";
@@ -349,10 +355,6 @@ function startMemoListener() {
         };
       });
 
-      memos.sort((a, b) => {
-        return getTime(b.updatedAt) - getTime(a.updatedAt);
-      });
-
       renderMemoList();
     },
     (error) => {
@@ -370,6 +372,12 @@ categoryButtons.forEach((button) => {
     updateCategoryButton();
     renderMemoList();
   });
+});
+
+sortSelect.addEventListener("change", () => {
+  currentSort = sortSelect.value;
+  localStorage.setItem("memoSort", currentSort);
+  renderMemoList();
 });
 
 loginButton.addEventListener("click", async () => {
