@@ -45,6 +45,8 @@ let unsubscribeMemos = null;
 
 let currentSort = localStorage.getItem("memoSort") || "manual";
 
+let isReorderMode = false;
+
 const memoList = document.getElementById("memoList");
 const memoTitle = document.getElementById("memoTitle");
 const memoBody = document.getElementById("memoBody");
@@ -66,6 +68,9 @@ const logoutButton = document.getElementById("logoutButton");
 const userName = document.getElementById("userName");
 
 const sortSelect = document.getElementById("sortSelect");
+const reorderButton = document.getElementById("reorderButton");
+const finishReorderButton = document.getElementById("finishReorderButton");
+
 sortSelect.value = currentSort;
 
 function getTimeValue(value) {
@@ -414,10 +419,52 @@ categoryButtons.forEach((button) => {
   });
 });
 
+function updateReorderUI() {
+  if (isReorderMode) {
+    reorderButton.classList.add("hidden");
+    finishReorderButton.classList.remove("hidden");
+    sortSelect.disabled = true;
+  } else {
+    reorderButton.classList.remove("hidden");
+    finishReorderButton.classList.add("hidden");
+    sortSelect.disabled = false;
+  }
+}
+
+function startReorderMode() {
+  currentSort = "manual";
+  localStorage.setItem("memoSort", currentSort);
+  sortSelect.value = currentSort;
+
+  isReorderMode = true;
+  updateReorderUI();
+  renderMemoList();
+}
+
+function finishReorderMode() {
+  isReorderMode = false;
+
+  updateReorderUI();
+  renderMemoList();
+}
+
 sortSelect.addEventListener("change", () => {
   currentSort = sortSelect.value;
   localStorage.setItem("memoSort", currentSort);
   renderMemoList();
+});
+
+reorderButton.addEventListener("click", () => {
+  if (!currentUser) {
+    alert("先にGoogleでログインしてください");
+    return;
+  }
+
+  startReorderMode();
+});
+
+finishReorderButton.addEventListener("click", () => {
+  finishReorderMode();
 });
 
 loginButton.addEventListener("click", async () => {
@@ -497,4 +544,5 @@ onAuthStateChanged(auth, (user) => {
 
 updateCategoryButton();
 updateAuthUI();
+updateReorderUI();
 showLoginMessage();
