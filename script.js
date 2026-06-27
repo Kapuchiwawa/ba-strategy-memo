@@ -277,6 +277,10 @@ function renderMemoList() {
       }
 
       function updateReorderUI() {
+        if (!reorderButton || !finishReorderButton) {
+          return;
+        }
+
         if (isReorderMode) {
           reorderButton.classList.add("hidden");
           finishReorderButton.classList.remove("hidden");
