@@ -125,22 +125,6 @@ button {
   display: block;
 }
 
-.memo-tags {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-
-.memo-tag {
-  padding: 3px 8px;
-  border-radius: 999px;
-  background-color: #ffe84a;
-  color: #233246;
-  font-size: 12px;
-  font-weight: bold;
-}
-
 #editMemoButton {
   margin-top: 16px;
 }

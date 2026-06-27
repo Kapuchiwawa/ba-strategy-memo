@@ -158,20 +158,6 @@ function clearMemoForm() {
   setSelectedCategories([]);
 }
 
-function createMemoTags(categories) {
-  const tagArea = document.createElement("div");
-  tagArea.className = "memo-tags";
-
-  categories.forEach((category) => {
-    const tag = document.createElement("span");
-    tag.className = "memo-tag";
-    tag.textContent = category;
-    tagArea.appendChild(tag);
-  });
-
-  return tagArea;
-}
-
 // ログイン中のユーザー専用のメモ保存場所
 function getMemosCollection() {
   return collection(db, "users", currentUser.uid, "memos");
@@ -290,7 +276,6 @@ function renderMemoList() {
   sortedMemos.forEach((memo) => {
     const li = document.createElement("li");
     const titleArea = document.createElement("span");
-    const categories = getMemoCategories(memo);
 
     li.className = "memo-item";
     li.dataset.memoId = memo.id;
@@ -298,10 +283,6 @@ function renderMemoList() {
     titleArea.className = "memo-item-title";
     titleArea.textContent = memo.title;
     li.appendChild(titleArea);
-
-    if (categories.length > 0) {
-      li.appendChild(createMemoTags(categories));
-    }
 
     if (isReorderMode && currentSort === "manual") {
       li.draggable = true;
