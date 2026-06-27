@@ -542,6 +542,8 @@ function updateReorderUI() {
 }
 
 function startReorderMode() {
+  alert("並び替えモードに入りました");
+
   currentSort = "manual";
   localStorage.setItem("memoSort", currentSort);
   sortSelect.value = currentSort;
@@ -550,8 +552,10 @@ function startReorderMode() {
   updateReorderUI();
   renderMemoList();
 
-  console.log("並び替えモード:", isReorderMode);
-  console.log("ドラッグ可能なメモ数:", document.querySelectorAll(".memo-item[draggable='true']").length);
+  alert(
+    "ドラッグ可能なメモ数: " +
+      document.querySelectorAll(".memo-item[draggable='true']").length
+  );
 }
 
 function finishReorderMode() {
