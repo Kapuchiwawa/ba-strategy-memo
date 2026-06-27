@@ -43,11 +43,7 @@ let editingMemoId = null;
 let currentUser = null;
 let unsubscribeMemos = null;
 
-let notesCache = [];
 let currentSort = localStorage.getItem("memoSort") || "manual";
-
-let isReorderMode = false;
-let draggedMemoId = null;
 
 const memoList = document.getElementById("memoList");
 const memoTitle = document.getElementById("memoTitle");
@@ -70,12 +66,9 @@ const logoutButton = document.getElementById("logoutButton");
 const userName = document.getElementById("userName");
 
 const sortSelect = document.getElementById("sortSelect");
-const reorderButton = document.getElementById("reorderButton");
-const finishReorderButton = document.getElementById("finishReorderButton");
-
 sortSelect.value = currentSort;
 
-function getTime(value) {
+function getTimeValue(value) {
   if (!value) {
     return 0;
   }
@@ -84,7 +77,43 @@ function getTime(value) {
     return value.toMillis();
   }
 
-  return new Date(value).getTime();
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  if (typeof value === "number") {
+    return value;
+  }
+
+  return new Date(value).getTime() || 0;
+}
+
+function sortMemos(memosToSort) {
+  const sortedMemos = [...memosToSort];
+
+  sortedMemos.sort((a, b) => {
+    if (currentSort === "manual") {
+      const orderA = a.sortOrder ?? getTimeValue(a.createdAt);
+      const orderB = b.sortOrder ?? getTimeValue(b.createdAt);
+      return orderA - orderB;
+    }
+
+    if (currentSort === "updatedDesc") {
+      return getTimeValue(b.updatedAt) - getTimeValue(a.updatedAt);
+    }
+
+    if (currentSort === "createdDesc") {
+      return getTimeValue(b.createdAt) - getTimeValue(a.createdAt);
+    }
+
+    if (currentSort === "titleAsc") {
+      return String(a.title || "").localeCompare(String(b.title || ""), "ja");
+    }
+
+    return 0;
+  });
+
+  return sortedMemos;
 }
 
 // ログイン中のユーザー専用のメモ保存場所
@@ -112,7 +141,9 @@ function showLoginMessage() {
 }
 
 function showMemo(memoId) {
-  const memo = memos.find((memo) => memo.id === memoId);
+  const memo = memos.find((memo) => {
+    return memo.id === memoId;
+  });
 
   if (!memo) {
     selectedMemoId = null;
@@ -180,13 +211,7 @@ function renderMemoList() {
     return isMemoVisible(memo);
   });
 
-  const sortedMemos = sortNotes(filteredMemos);
-
-  console.log(
-    "表示順:",
-    currentSort,
-    sortedMemos.map((memo) => memo.title)
-  );
+  const sortedMemos = sortMemos(filteredMemos);
 
   if (sortedMemos.length === 0) {
     selectedMemoId = null;
@@ -208,163 +233,19 @@ function renderMemoList() {
 
     li.className = "memo-item";
     li.textContent = memo.title;
-    li.dataset.memoId = memo.id;
-
-    if (isReorderMode && currentSort === "manual") {
-      li.draggable = true;
-      li.classList.add("reorder-mode");
-    } else {
-      li.draggable = false;
-    }
 
     if (memo.id === editingMemoId) {
       li.classList.add("editing");
     }
 
     li.addEventListener("click", () => {
-      if (isReorderMode) {
-        return;
-      }
-
       showMemo(memo.id);
-    });
-
-    li.addEventListener("dragstart", (event) => {
-      if (!isReorderMode || currentSort !== "manual") {
-        return;
-      }
-
-      draggedMemoId = memo.id;
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", memo.id);
-
-      li.classList.add("dragging");
-    });
-
-    li.addEventListener("dragover", (event) => {
-      if (!isReorderMode || currentSort !== "manual") {
-        return;
-      }
-
-      event.preventDefault();
-      li.classList.add("drag-over");
-    });
-
-    li.addEventListener("dragleave", () => {
-      li.classList.remove("drag-over");
-    });
-
-    li.addEventListener("drop", async (event) => {
-      if (!isReorderMode || currentSort !== "manual") {
-        return;
-      }
-
-      event.preventDefault();
-      li.classList.remove("drag-over");
-
-      const fromMemoId = event.dataTransfer.getData("text/plain") || draggedMemoId;
-      const toMemoId = memo.id;
-
-      if (!fromMemoId || fromMemoId === toMemoId) {
-        return;
-      }
-
-      try {
-        await moveMemoByDrag(fromMemoId, toMemoId);
-      } catch (error) {
-        console.error(error);
-        alert("並び替えの保存に失敗しました。");
-      }
-
-      function updateReorderUI() {
-        if (!reorderButton || !finishReorderButton) {
-          return;
-        }
-
-        if (isReorderMode) {
-          reorderButton.classList.add("hidden");
-          finishReorderButton.classList.remove("hidden");
-          sortSelect.disabled = true;
-        } else {
-          reorderButton.classList.remove("hidden");
-          finishReorderButton.classList.add("hidden");
-          sortSelect.disabled = false;
-        }
-      }
-
-      function startReorderMode() {
-        currentSort = "manual";
-        localStorage.setItem("memoSort", currentSort);
-        sortSelect.value = currentSort;
-
-        isReorderMode = true;
-        //updateReorderUI();
-        renderMemoList();
-      }
-
-      function finishReorderMode() {
-        isReorderMode = false;
-        draggedMemoId = null;
-
-        //updateReorderUI();
-        renderMemoList();
-      }
-    });
-
-    li.addEventListener("dragend", () => {
-      draggedMemoId = null;
-      li.classList.remove("dragging");
     });
 
     memoList.appendChild(li);
   });
 
   showMemo(selectedMemoId);
-}
-
-async function moveMemoByDrag(fromMemoId, toMemoId) {
-  const visibleMemos = memos.filter((memo) => {
-    return isMemoVisible(memo);
-  });
-
-  const sortedMemos = sortNotes(visibleMemos);
-
-  const fromIndex = sortedMemos.findIndex((memo) => {
-    return memo.id === fromMemoId;
-  });
-
-  const toIndex = sortedMemos.findIndex((memo) => {
-    return memo.id === toMemoId;
-  });
-
-  if (fromIndex === -1 || toIndex === -1) {
-    return;
-  }
-
-  const reorderedMemos = [...sortedMemos];
-  const movedMemos = reorderedMemos.splice(fromIndex, 1);
-  const movedMemo = movedMemos[0];
-
-  reorderedMemos.splice(toIndex, 0, movedMemo);
-
-  const orderValues = sortedMemos.map((memo, index) => {
-    return memo.sortOrder ?? getTimeValue(memo.createdAt) ?? Date.now() + index;
-  });
-
-  await Promise.all(
-    reorderedMemos.map((memo, index) => {
-      const newSortOrder = orderValues[index];
-
-      memo.sortOrder = newSortOrder;
-
-      return updateDoc(doc(db, "users", currentUser.uid, "memos", memo.id), {
-        sortOrder: newSortOrder
-      });
-    })
-  );
-
-  selectedMemoId = movedMemo.id;
-  renderMemoList();
 }
 
 function startEditMemo() {
@@ -378,7 +259,9 @@ function startEditMemo() {
     return;
   }
 
-  const memo = memos.find((memo) => memo.id === selectedMemoId);
+  const memo = memos.find((memo) => {
+    return memo.id === selectedMemoId;
+  });
 
   if (!memo) {
     alert("メモが見つかりません");
@@ -469,7 +352,9 @@ async function deleteSelectedMemo() {
     return;
   }
 
-  const memo = memos.find((memo) => memo.id === selectedMemoId);
+  const memo = memos.find((memo) => {
+    return memo.id === selectedMemoId;
+  });
 
   if (!memo) {
     alert("メモが見つかりません");
@@ -532,24 +417,7 @@ categoryButtons.forEach((button) => {
 sortSelect.addEventListener("change", () => {
   currentSort = sortSelect.value;
   localStorage.setItem("memoSort", currentSort);
-
-  isReorderMode = false;
-  updateReorderUI();
-
   renderMemoList();
-});
-
-reorderButton.addEventListener("click", () => {
-  if (!currentUser) {
-    alert("先にGoogleでログインしてください");
-    return;
-  }
-
-  startReorderMode();
-});
-
-finishReorderButton.addEventListener("click", () => {
-  finishReorderMode();
 });
 
 loginButton.addEventListener("click", async () => {
@@ -613,10 +481,6 @@ onAuthStateChanged(auth, (user) => {
   selectedMemoId = null;
   editingMemoId = null;
 
-  isReorderMode = false;
-  draggedMemoId = null;
-  updateReorderUI();
-
   titleInput.value = "";
   bodyInput.value = "";
   addMemoButton.textContent = "追加";
@@ -633,63 +497,4 @@ onAuthStateChanged(auth, (user) => {
 
 updateCategoryButton();
 updateAuthUI();
-updateReorderUI();
 showLoginMessage();
-
-function getTimeValue(value) {
-  if (!value) return 0;
-
-  if (typeof value.toMillis === "function") {
-    return value.toMillis();
-  }
-
-  if (value instanceof Date) {
-    return value.getTime();
-  }
-
-  if (typeof value === "number") {
-    return value;
-  }
-
-  return new Date(value).getTime() || 0;
-}
-
-function updateReorderUI() {
-  if (isReorderMode) {
-    reorderButton.classList.add("hidden");
-    finishReorderButton.classList.remove("hidden");
-    sortSelect.disabled = true;
-  } else {
-    reorderButton.classList.remove("hidden");
-    finishReorderButton.classList.add("hidden");
-    sortSelect.disabled = false;
-  }
-}
-
-function sortNotes(notes) {
-  const sorted = [...notes];
-
-  sorted.sort((a, b) => {
-    if (currentSort === "manual") {
-      const orderA = a.sortOrder ?? getTimeValue(a.createdAt);
-      const orderB = b.sortOrder ?? getTimeValue(b.createdAt);
-      return orderA - orderB;
-    }
-
-    if (currentSort === "updatedDesc") {
-      return getTimeValue(b.updatedAt) - getTimeValue(a.updatedAt);
-    }
-
-    if (currentSort === "createdDesc") {
-      return getTimeValue(b.createdAt) - getTimeValue(a.createdAt);
-    }
-
-    if (currentSort === "titleAsc") {
-      return (a.title || "").localeCompare(b.title || "", "ja");
-    }
-
-    return 0;
-  });
-
-  return sorted;
-}
