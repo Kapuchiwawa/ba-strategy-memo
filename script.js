@@ -539,6 +539,7 @@ onAuthStateChanged(auth, (user) => {
   closeForm();
 
   updateAuthUI();
+  updateReorderUI();
 
   if (currentUser) {
     startMemoListener();
