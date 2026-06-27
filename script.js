@@ -284,7 +284,7 @@ function renderMemoList() {
     titleArea.textContent = memo.title;
     li.appendChild(titleArea);
 
-    if (isReorderMode && currentSort === "manual") {
+     if (isReorderMode && currentSort === "manual") {
       li.draggable = true;
       li.classList.add("reorder-mode");
     } else {
