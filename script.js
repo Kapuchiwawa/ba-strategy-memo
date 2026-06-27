@@ -177,6 +177,12 @@ function renderMemoList() {
 
   const sortedMemos = sortNotes(filteredMemos);
 
+  console.log(
+    "表示順:",
+    currentSort,
+    sortedMemos.map((memo) => memo.title)
+  );
+
   if (sortedMemos.length === 0) {
     selectedMemoId = null;
     memoTitle.textContent = "メモがありません";
@@ -377,6 +383,9 @@ categoryButtons.forEach((button) => {
 sortSelect.addEventListener("change", () => {
   currentSort = sortSelect.value;
   localStorage.setItem("memoSort", currentSort);
+
+  console.log("並べ替え変更:", currentSort);
+
   renderMemoList();
 });
 
