@@ -489,6 +489,11 @@ function startEditMemo() {
 
   openForm();
   renderMemoList();
+
+  newMemoForm.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
 }
 
 function cancelEdit() {
