@@ -298,7 +298,7 @@ function renderMemoList() {
         sortSelect.value = currentSort;
 
         isReorderMode = true;
-        updateReorderUI();
+        //updateReorderUI();
         renderMemoList();
       }
 
@@ -306,7 +306,7 @@ function renderMemoList() {
         isReorderMode = false;
         draggedMemoId = null;
 
-        updateReorderUI();
+        //updateReorderUI();
         renderMemoList();
       }
     });
