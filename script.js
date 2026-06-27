@@ -138,13 +138,7 @@ function getMemoCategories(memo) {
 }
 
 function getMemoGroup(memo) {
-  const groupName = String(memo.group || "").trim();
-
-  if (groupName === "") {
-    return "未分類";
-  }
-
-  return groupName;
+  return String(memo.group || "").trim();
 }
 
 function getSelectedCategories() {
@@ -209,8 +203,8 @@ function showMemo(memoId) {
   const categories = getMemoCategories(memo);
   const groupName = getMemoGroup(memo);
 
-  const groupText = `グループ：${groupName}\n`;
-  const categoryText = categories.length > 0 ? `項目：${categories.join(" / ")}\n\n` : "\n";
+  const groupText = groupName !== "" ? `グループ：${groupName}\n` : "";
+  const categoryText = categories.length > 0 ? `項目：${categories.join(" / ")}\n\n` : "";
 
   selectedMemoId = memo.id;
   memoTitle.textContent = memo.title;
@@ -301,12 +295,14 @@ function renderMemoList() {
   });
 
   groupedMemos.forEach((groupMemos, groupName) => {
-    const groupTitle = document.createElement("li");
+    if (groupName !== "") {
+      const groupTitle = document.createElement("li");
 
-    groupTitle.className = "memo-group-title";
-    groupTitle.textContent = groupName;
+      groupTitle.className = "memo-group-title";
+      groupTitle.textContent = groupName;
 
-    memoList.appendChild(groupTitle);
+      memoList.appendChild(groupTitle);
+    }
 
     groupMemos.forEach((memo) => {
       const li = document.createElement("li");
