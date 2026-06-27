@@ -650,6 +650,18 @@ function getTimeValue(value) {
   return new Date(value).getTime() || 0;
 }
 
+function updateReorderUI() {
+  if (isReorderMode) {
+    reorderButton.classList.add("hidden");
+    finishReorderButton.classList.remove("hidden");
+    sortSelect.disabled = true;
+  } else {
+    reorderButton.classList.remove("hidden");
+    finishReorderButton.classList.add("hidden");
+    sortSelect.disabled = false;
+  }
+}
+
 function sortNotes(notes) {
   const sorted = [...notes];
 
