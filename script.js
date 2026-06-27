@@ -460,6 +460,11 @@ reorderButton.addEventListener("click", () => {
     return;
   }
 
+  if (!currentUser) {
+    alert("先にGoogleでログインしてください");
+    return;
+  }
+
   startReorderMode();
 });
 
