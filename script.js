@@ -598,6 +598,19 @@ categoryButtons.forEach((button) => {
 });
 
 function updateReorderUI() {
+  const isManualSort = currentSort === "manual";
+
+  if (!isManualSort) {
+    isReorderMode = false;
+    draggedMemoId = null;
+    removePlaceholder();
+
+    reorderButton.classList.add("hidden");
+    finishReorderButton.classList.add("hidden");
+    sortSelect.disabled = false;
+    return;
+  }
+
   if (isReorderMode) {
     reorderButton.classList.add("hidden");
     finishReorderButton.classList.remove("hidden");
@@ -632,6 +645,8 @@ function finishReorderMode() {
 sortSelect.addEventListener("change", () => {
   currentSort = sortSelect.value;
   localStorage.setItem("memoSort", currentSort);
+
+  updateReorderUI();
   renderMemoList();
 });
 
