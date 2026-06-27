@@ -164,11 +164,6 @@ button:disabled {
   opacity: 0.5;
 }
 
-.memo-item.drag-over {
-  outline: 3px solid #2f80d8;
-  background-color: #dceeff;
-}
-
 .memo-item.reorder-mode {
   cursor: grab;
 }
@@ -180,4 +175,26 @@ button:disabled {
 .memo-item.drag-over {
   outline: 3px solid #2f80d8;
   background-color: #dceeff;
+}
+
+.memo-item.reorder-mode {
+  cursor: grab;
+}
+
+.memo-item.dragging {
+  opacity: 0.35;
+}
+
+.drag-placeholder {
+  height: 42px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background-color: #d7dde6;
+  border: 2px dashed #8a9bb0;
+  color: #5f6b7a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  list-style: none;
 }
