@@ -46,6 +46,7 @@ let unsubscribeMemos = null;
 let currentSort = localStorage.getItem("memoSort") || "manual";
 
 let isReorderMode = false;
+let draggedMemoId = null;
 
 const memoList = document.getElementById("memoList");
 const memoTitle = document.getElementById("memoTitle");
@@ -238,19 +239,128 @@ function renderMemoList() {
 
     li.className = "memo-item";
     li.textContent = memo.title;
+    li.dataset.memoId = memo.id;
+
+    if (isReorderMode && currentSort === "manual") {
+      li.draggable = true;
+      li.classList.add("reorder-mode");
+    } else {
+      li.draggable = false;
+    }
 
     if (memo.id === editingMemoId) {
       li.classList.add("editing");
     }
 
     li.addEventListener("click", () => {
+      if (isReorderMode) {
+        return;
+      }
+
       showMemo(memo.id);
+    });
+
+    li.addEventListener("dragstart", (event) => {
+      if (!isReorderMode || currentSort !== "manual") {
+        return;
+      }
+
+      draggedMemoId = memo.id;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", memo.id);
+
+      li.classList.add("dragging");
+    });
+
+    li.addEventListener("dragover", (event) => {
+      if (!isReorderMode || currentSort !== "manual") {
+        return;
+      }
+
+      event.preventDefault();
+      li.classList.add("drag-over");
+    });
+
+    li.addEventListener("dragleave", () => {
+      li.classList.remove("drag-over");
+    });
+
+    li.addEventListener("drop", async (event) => {
+      if (!isReorderMode || currentSort !== "manual") {
+        return;
+      }
+
+      event.preventDefault();
+      li.classList.remove("drag-over");
+
+      const fromMemoId = event.dataTransfer.getData("text/plain") || draggedMemoId;
+      const toMemoId = memo.id;
+
+      if (!fromMemoId || fromMemoId === toMemoId) {
+        return;
+      }
+
+      try {
+        await moveMemoByDrag(fromMemoId, toMemoId);
+      } catch (error) {
+        console.error(error);
+        alert("並び替えの保存に失敗しました。");
+      }
+    });
+
+    li.addEventListener("dragend", () => {
+      draggedMemoId = null;
+      li.classList.remove("dragging");
     });
 
     memoList.appendChild(li);
   });
 
   showMemo(selectedMemoId);
+}
+
+async function moveMemoByDrag(fromMemoId, toMemoId) {
+  const visibleMemos = memos.filter((memo) => {
+    return isMemoVisible(memo);
+  });
+
+  const sortedMemos = sortMemos(visibleMemos);
+
+  const fromIndex = sortedMemos.findIndex((memo) => {
+    return memo.id === fromMemoId;
+  });
+
+  const toIndex = sortedMemos.findIndex((memo) => {
+    return memo.id === toMemoId;
+  });
+
+  if (fromIndex === -1 || toIndex === -1) {
+    return;
+  }
+
+  const reorderedMemos = [...sortedMemos];
+  const movedMemo = reorderedMemos.splice(fromIndex, 1)[0];
+
+  reorderedMemos.splice(toIndex, 0, movedMemo);
+
+  const orderValues = sortedMemos.map((memo, index) => {
+    return memo.sortOrder ?? getTimeValue(memo.createdAt) ?? Date.now() + index;
+  });
+
+  await Promise.all(
+    reorderedMemos.map((memo, index) => {
+      const newSortOrder = orderValues[index];
+
+      memo.sortOrder = newSortOrder;
+
+      return updateDoc(doc(db, "users", currentUser.uid, "memos", memo.id), {
+        sortOrder: newSortOrder
+      });
+    })
+  );
+
+  selectedMemoId = movedMemo.id;
+  renderMemoList();
 }
 
 function startEditMemo() {
@@ -443,6 +553,7 @@ function startReorderMode() {
 
 function finishReorderMode() {
   isReorderMode = false;
+  draggedMemoId = null;
 
   updateReorderUI();
   renderMemoList();
