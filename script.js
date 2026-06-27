@@ -56,6 +56,7 @@ const memoBody = document.getElementById("memoBody");
 const categoryButtons = document.querySelectorAll(".category-button");
 
 const titleInput = document.getElementById("titleInput");
+const groupInput = document.getElementById("groupInput");
 const categoryCheckboxes = document.querySelectorAll(".category-checkbox");
 const bodyInput = document.getElementById("bodyInput");
 const addMemoButton = document.getElementById("addMemoButton");
@@ -136,6 +137,16 @@ function getMemoCategories(memo) {
   return [];
 }
 
+function getMemoGroup(memo) {
+  const groupName = String(memo.group || "").trim();
+
+  if (groupName === "") {
+    return "未分類";
+  }
+
+  return groupName;
+}
+
 function getSelectedCategories() {
   return Array.from(categoryCheckboxes)
     .filter((checkbox) => {
@@ -154,6 +165,7 @@ function setSelectedCategories(categories) {
 
 function clearMemoForm() {
   titleInput.value = "";
+  groupInput.value = "";
   bodyInput.value = "";
   setSelectedCategories([]);
 }
@@ -195,11 +207,14 @@ function showMemo(memoId) {
   }
 
   const categories = getMemoCategories(memo);
-  const categoryText = categories.length > 0 ? `項目：${categories.join(" / ")}\n\n` : "";
+  const groupName = getMemoGroup(memo);
+
+  const groupText = `グループ：${groupName}\n`;
+  const categoryText = categories.length > 0 ? `項目：${categories.join(" / ")}\n\n` : "\n";
 
   selectedMemoId = memo.id;
   memoTitle.textContent = memo.title;
-  memoBody.textContent = categoryText + memo.body;
+  memoBody.textContent = groupText + categoryText + memo.body;
 }
 
 function updateCategoryButton() {
@@ -273,59 +288,80 @@ function renderMemoList() {
     selectedMemoId = sortedMemos[0].id;
   }
 
+  const groupedMemos = new Map();
+
   sortedMemos.forEach((memo) => {
-    const li = document.createElement("li");
-    const titleArea = document.createElement("span");
+    const groupName = getMemoGroup(memo);
 
-    li.className = "memo-item";
-    li.dataset.memoId = memo.id;
-
-    titleArea.className = "memo-item-title";
-    titleArea.textContent = memo.title;
-    li.appendChild(titleArea);
-
-     if (isReorderMode && currentSort === "manual") {
-      li.draggable = true;
-      li.classList.add("reorder-mode");
-    } else {
-      li.draggable = false;
+    if (!groupedMemos.has(groupName)) {
+      groupedMemos.set(groupName, []);
     }
 
-    if (memo.id === editingMemoId) {
-      li.classList.add("editing");
-    }
+    groupedMemos.get(groupName).push(memo);
+  });
 
-    li.addEventListener("click", () => {
-      if (isReorderMode) {
-        return;
+  groupedMemos.forEach((groupMemos, groupName) => {
+    const groupTitle = document.createElement("li");
+
+    groupTitle.className = "memo-group-title";
+    groupTitle.textContent = groupName;
+
+    memoList.appendChild(groupTitle);
+
+    groupMemos.forEach((memo) => {
+      const li = document.createElement("li");
+      const titleArea = document.createElement("span");
+
+      li.className = "memo-item";
+      li.dataset.memoId = memo.id;
+
+      titleArea.className = "memo-item-title";
+      titleArea.textContent = memo.title;
+      li.appendChild(titleArea);
+
+      if (isReorderMode && currentSort === "manual") {
+        li.draggable = true;
+        li.classList.add("reorder-mode");
+      } else {
+        li.draggable = false;
       }
 
-      showMemo(memo.id);
-    });
-
-    li.addEventListener("dragstart", (event) => {
-      if (!isReorderMode || currentSort !== "manual") {
-        event.preventDefault();
-        return;
+      if (memo.id === editingMemoId) {
+        li.classList.add("editing");
       }
 
-      draggedMemoId = memo.id;
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", memo.id);
+      li.addEventListener("click", () => {
+        if (isReorderMode) {
+          return;
+        }
 
-      li.classList.add("dragging");
-    });
-
-    li.addEventListener("dragend", () => {
-      draggedMemoId = null;
-      removePlaceholder();
-
-      document.querySelectorAll(".memo-item.dragging").forEach((item) => {
-        item.classList.remove("dragging");
+        showMemo(memo.id);
       });
-    });
 
-    memoList.appendChild(li);
+      li.addEventListener("dragstart", (event) => {
+        if (!isReorderMode || currentSort !== "manual") {
+          event.preventDefault();
+          return;
+        }
+
+        draggedMemoId = memo.id;
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", memo.id);
+
+        li.classList.add("dragging");
+      });
+
+      li.addEventListener("dragend", () => {
+        draggedMemoId = null;
+        removePlaceholder();
+
+        document.querySelectorAll(".memo-item.dragging").forEach((item) => {
+          item.classList.remove("dragging");
+        });
+      });
+
+      memoList.appendChild(li);
+    });
   });
 
   showMemo(selectedMemoId);
@@ -449,6 +485,7 @@ function startEditMemo() {
   editingMemoId = memo.id;
 
   titleInput.value = memo.title;
+  groupInput.value = memo.group || "";
   bodyInput.value = memo.body;
   setSelectedCategories(getMemoCategories(memo));
 
@@ -476,6 +513,7 @@ async function addOrUpdateMemo() {
   }
 
   const title = titleInput.value.trim();
+  const groupName = groupInput.value.trim();
   const categories = getSelectedCategories();
   const body = bodyInput.value;
   const primaryCategory = categories[0];
@@ -495,6 +533,7 @@ async function addOrUpdateMemo() {
 
     await updateDoc(memoRef, {
       title: title,
+      group: groupName,
       category: primaryCategory,
       categories: categories,
       body: body,
@@ -507,6 +546,7 @@ async function addOrUpdateMemo() {
   } else {
     const docRef = await addDoc(getMemosCollection(), {
       title: title,
+      group: groupName,
       category: primaryCategory,
       categories: categories,
       body: body,
