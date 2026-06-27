@@ -56,7 +56,7 @@ const memoBody = document.getElementById("memoBody");
 const categoryButtons = document.querySelectorAll(".category-button");
 
 const titleInput = document.getElementById("titleInput");
-const categoryInput = document.getElementById("categoryInput");
+const categoryCheckboxes = document.querySelectorAll(".category-checkbox");
 const bodyInput = document.getElementById("bodyInput");
 const addMemoButton = document.getElementById("addMemoButton");
 const editMemoButton = document.getElementById("editMemoButton");
@@ -124,6 +124,54 @@ function sortMemos(memosToSort) {
   return sortedMemos;
 }
 
+function getMemoCategories(memo) {
+  if (Array.isArray(memo.categories)) {
+    return memo.categories;
+  }
+
+  if (memo.category) {
+    return [memo.category];
+  }
+
+  return [];
+}
+
+function getSelectedCategories() {
+  return Array.from(categoryCheckboxes)
+    .filter((checkbox) => {
+      return checkbox.checked;
+    })
+    .map((checkbox) => {
+      return checkbox.value;
+    });
+}
+
+function setSelectedCategories(categories) {
+  categoryCheckboxes.forEach((checkbox) => {
+    checkbox.checked = categories.includes(checkbox.value);
+  });
+}
+
+function clearMemoForm() {
+  titleInput.value = "";
+  bodyInput.value = "";
+  setSelectedCategories([]);
+}
+
+function createMemoTags(categories) {
+  const tagArea = document.createElement("div");
+  tagArea.className = "memo-tags";
+
+  categories.forEach((category) => {
+    const tag = document.createElement("span");
+    tag.className = "memo-tag";
+    tag.textContent = category;
+    tagArea.appendChild(tag);
+  });
+
+  return tagArea;
+}
+
 // ログイン中のユーザー専用のメモ保存場所
 function getMemosCollection() {
   return collection(db, "users", currentUser.uid, "memos");
@@ -160,9 +208,12 @@ function showMemo(memoId) {
     return;
   }
 
+  const categories = getMemoCategories(memo);
+  const categoryText = categories.length > 0 ? `項目：${categories.join(" / ")}\n\n` : "";
+
   selectedMemoId = memo.id;
   memoTitle.textContent = memo.title;
-  memoBody.textContent = memo.body;
+  memoBody.textContent = categoryText + memo.body;
 }
 
 function updateCategoryButton() {
@@ -204,7 +255,7 @@ function isMemoVisible(memo) {
     return true;
   }
 
-  return memo.category === selectedCategory;
+  return getMemoCategories(memo).includes(selectedCategory);
 }
 
 function renderMemoList() {
@@ -238,10 +289,19 @@ function renderMemoList() {
 
   sortedMemos.forEach((memo) => {
     const li = document.createElement("li");
+    const titleArea = document.createElement("span");
+    const categories = getMemoCategories(memo);
 
     li.className = "memo-item";
-    li.textContent = memo.title;
     li.dataset.memoId = memo.id;
+
+    titleArea.className = "memo-item-title";
+    titleArea.textContent = memo.title;
+    li.appendChild(titleArea);
+
+    if (categories.length > 0) {
+      li.appendChild(createMemoTags(categories));
+    }
 
     if (isReorderMode && currentSort === "manual") {
       li.draggable = true;
@@ -408,8 +468,8 @@ function startEditMemo() {
   editingMemoId = memo.id;
 
   titleInput.value = memo.title;
-  categoryInput.value = memo.category;
   bodyInput.value = memo.body;
+  setSelectedCategories(getMemoCategories(memo));
 
   addMemoButton.textContent = "更新";
 
@@ -420,8 +480,7 @@ function startEditMemo() {
 function cancelEdit() {
   editingMemoId = null;
 
-  titleInput.value = "";
-  bodyInput.value = "";
+  clearMemoForm();
 
   addMemoButton.textContent = "追加";
 
@@ -436,11 +495,17 @@ async function addOrUpdateMemo() {
   }
 
   const title = titleInput.value.trim();
-  const category = categoryInput.value;
+  const categories = getSelectedCategories();
   const body = bodyInput.value;
+  const primaryCategory = categories[0];
 
   if (title === "") {
     alert("タイトルを入力してください");
+    return;
+  }
+
+  if (categories.length === 0) {
+    alert("項目を1つ以上選んでください");
     return;
   }
 
@@ -449,7 +514,8 @@ async function addOrUpdateMemo() {
 
     await updateDoc(memoRef, {
       title: title,
-      category: category,
+      category: primaryCategory,
+      categories: categories,
       body: body,
       updatedAt: serverTimestamp()
     });
@@ -460,7 +526,8 @@ async function addOrUpdateMemo() {
   } else {
     const docRef = await addDoc(getMemosCollection(), {
       title: title,
-      category: category,
+      category: primaryCategory,
+      categories: categories,
       body: body,
       sortOrder: Date.now(),
       createdAt: serverTimestamp(),
@@ -470,10 +537,9 @@ async function addOrUpdateMemo() {
     selectedMemoId = docRef.id;
   }
 
-  titleInput.value = "";
-  bodyInput.value = "";
+  clearMemoForm();
 
-  selectedCategory = category;
+  selectedCategory = primaryCategory;
   updateCategoryButton();
   closeForm();
 }
@@ -509,8 +575,7 @@ async function deleteSelectedMemo() {
   selectedMemoId = null;
   editingMemoId = null;
 
-  titleInput.value = "";
-  bodyInput.value = "";
+  clearMemoForm();
   addMemoButton.textContent = "追加";
 
   closeForm();
@@ -679,8 +744,12 @@ logoutButton.addEventListener("click", async () => {
 openFormButton.addEventListener("click", () => {
   editingMemoId = null;
 
-  titleInput.value = "";
-  bodyInput.value = "";
+  clearMemoForm();
+
+  if (selectedCategory !== "全部") {
+    setSelectedCategories([selectedCategory]);
+  }
+
   addMemoButton.textContent = "追加";
 
   openForm();
@@ -724,8 +793,7 @@ onAuthStateChanged(auth, (user) => {
   selectedMemoId = null;
   editingMemoId = null;
 
-  titleInput.value = "";
-  bodyInput.value = "";
+  clearMemoForm();
   addMemoButton.textContent = "追加";
   closeForm();
 

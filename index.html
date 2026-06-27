@@ -34,12 +34,29 @@
 
         <input id="titleInput" type="text" placeholder="タイトル 例：ホバクラ Insane 重装甲">
 
-        <select id="categoryInput">
-            <option value="総力戦">総力戦</option>
-            <option value="大決戦">大決戦</option>
-            <option value="制約解除">制約解除</option>
-            <option value="イベント">イベント</option>
-        </select>
+        <div class="category-check-area" id="categoryInputArea">
+            <p class="form-label">項目（複数選択できます）</p>
+
+            <label class="category-check">
+                <input class="category-checkbox" name="categoryInput" type="checkbox" value="総力戦">
+                総力戦
+            </label>
+
+            <label class="category-check">
+                <input class="category-checkbox" name="categoryInput" type="checkbox" value="大決戦">
+                大決戦
+            </label>
+
+            <label class="category-check">
+                <input class="category-checkbox" name="categoryInput" type="checkbox" value="制約解除">
+                制約解除
+            </label>
+
+            <label class="category-check">
+                <input class="category-checkbox" name="categoryInput" type="checkbox" value="イベント">
+                イベント
+            </label>
+        </div>
 
         <textarea id="bodyInput" placeholder="ここに本文を書く"></textarea>
 

@@ -75,8 +75,7 @@ button {
   border-radius: 12px;
 }
 
-.new-memo-form input,
-.new-memo-form select,
+.new-memo-form input[type="text"],
 .new-memo-form textarea {
   display: block;
   width: 100%;
@@ -90,6 +89,56 @@ button {
 .new-memo-form textarea {
   height: 120px;
   resize: vertical;
+}
+
+
+.form-label {
+  margin: 0 0 8px;
+  font-weight: bold;
+}
+
+.category-check-area {
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid #c9dcec;
+  border-radius: 8px;
+  background-color: #f8fbff;
+}
+
+.category-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 10px 8px 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background-color: #eaf5ff;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.category-check input {
+  margin: 0;
+}
+
+.memo-item-title {
+  display: block;
+}
+
+.memo-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.memo-tag {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background-color: #ffe84a;
+  color: #233246;
+  font-size: 12px;
+  font-weight: bold;
 }
 
 #editMemoButton {
