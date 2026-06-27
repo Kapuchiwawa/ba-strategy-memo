@@ -168,3 +168,16 @@ button:disabled {
   outline: 3px solid #2f80d8;
   background-color: #dceeff;
 }
+
+.memo-item.reorder-mode {
+  cursor: grab;
+}
+
+.memo-item.dragging {
+  opacity: 0.5;
+}
+
+.memo-item.drag-over {
+  outline: 3px solid #2f80d8;
+  background-color: #dceeff;
+}

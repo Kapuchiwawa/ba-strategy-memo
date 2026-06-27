@@ -549,6 +549,9 @@ function startReorderMode() {
   isReorderMode = true;
   updateReorderUI();
   renderMemoList();
+
+  console.log("並び替えモード:", isReorderMode);
+  console.log("ドラッグ可能なメモ数:", document.querySelectorAll(".memo-item[draggable='true']").length);
 }
 
 function finishReorderMode() {
